@@ -17,6 +17,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.provider.MediaStore;
 import android.view.View;
+import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
 
@@ -33,8 +34,6 @@ public class AgregarRegistroActivity extends AppCompatActivity {
     private EditText nameEt,phoneEt,emailEt,dobEt,bioEt;
     private FloatingActionButton saveBtn;
 
-
-
     //Actionbar
     private ActionBar actionBar;
     //Permiso de la clase Constants
@@ -47,9 +46,10 @@ public class AgregarRegistroActivity extends AppCompatActivity {
     private String[] cameraPermissions; // cámara y almacenamiento
     private String [] storagePermissions;// solo almacenamiento
     // variables (constain datos para guardar)
-    private Uri imageUri;//toma la direccion de la imagen donde se guardara
-    private String name, phone, email, dob, bio;
+    private Uri imageUri;
+    private String id, name, phone, email, dob, bio, addedTime, updatedTime;
 
+    private boolean isEditMode = false;
 
     //db helper
     private MyDbHelper dbHelper;
@@ -74,12 +74,55 @@ public class AgregarRegistroActivity extends AppCompatActivity {
         bioEt = findViewById(R.id.bioEt);
         saveBtn = findViewById(R.id.saveBtn);
 
+        //obtener los datos de la intencion
+        Intent intent = getIntent();
+        isEditMode = intent.getBooleanExtra("isEditMode", false);
+
+        //establer la vista de los datos
+        if (isEditMode) {
+
+            //Actualizar datos
+            actionBar.setTitle("Actualizar Registro");
+
+            id = intent.getStringExtra("ID");
+            name = intent.getStringExtra("NAME");
+            phone = intent.getStringExtra("PHONE");
+            email = intent.getStringExtra("EMAIL");
+            dob = intent.getStringExtra("DOB");
+            bio = intent.getStringExtra("BIO");
+            imageUri = Uri.parse(intent.getStringExtra("IMAGE"));
+            addedTime = intent.getStringExtra("ADDEDTIME");
+            updatedTime = intent.getStringExtra("UPDATEDTIME");
+
+            //set View data
+            nameEt.setText(name);
+            phoneEt.setText(phone);
+            emailEt.setText(email);
+            dobEt.setText(dob);
+            bioEt.setText(bio);
+            //sino se selecciona una imagen al agregr datos; el valor de la imagen ser "NULL"
+            if (imageUri.toString().equals("null")) {
+                //sino ahi imagen , set default
+                profileIv.setImageResource(R.drawable.ic_person_black);
+            } else {
+
+                profileIv.setImageURI(imageUri);
+            }
+
+        }
+
+        else {
+            //agregar datos
+            actionBar.setTitle("Agregar Registro");
+        }
+
+
         //Inicializar BD Helper
         dbHelper = new MyDbHelper(this);
 
         //Inicializamos Permisos arrays
-        cameraPermissions = new String[]{Manifest.permission.CAMERA, Manifest.permission.WRITE_EXTERNAL_STORAGE};//tomar una imagen
-        storagePermissions = new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE};//ingresar una imagen de la galeria
+        cameraPermissions = new String[]{Manifest.permission.CAMERA, Manifest.permission.WRITE_EXTERNAL_STORAGE};
+        storagePermissions = new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE};
 
         profileIv.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -98,28 +141,54 @@ public class AgregarRegistroActivity extends AppCompatActivity {
     }
 
     private void inputData(){
+
         //get data
         name = ""+nameEt.getText().toString().trim();
         phone = ""+phoneEt.getText().toString().trim();
         email = ""+emailEt.getText().toString().trim();
         dob = ""+dobEt.getText().toString().trim();
         bio = ""+bioEt.getText().toString().trim();
+        //actualizacion de reguistros
+        if (isEditMode){
+            //actualizar datos
 
-        //guarda en la base de datos
-        String timestamp = ""+System.currentTimeMillis();
-        long id = dbHelper.insertRecord(
-                ""+name,
-                ""+imageUri,
-                ""+bio,//fecha
-                ""+phone,
-                ""+email,
-                ""+dob,//descrip
-                ""+timestamp,
-                ""+timestamp
-        );
+            String timestamp = ""+System.currentTimeMillis();
+            dbHelper.updateRecord(
+                    ""+id,
+                    ""+name,
+                    ""+imageUri,
+                    ""+bio,
+                    ""+phone,
+                    ""+email,
+                    ""+dob,
+                    ""+addedTime,//este dato no cambia fecha registro
+                    ""+timestamp//Fecha de actualizacion cambia
 
-        Toast.makeText(this, "Registro agregado contra ID: "+id, Toast.LENGTH_SHORT).show();
+            );
+
+            Toast.makeText(this, "Actualizando... ", Toast.LENGTH_SHORT).show();
+
+        }
+        //si es un nuevo dato
+        else{
+            //new datos
+            //guarda en la base de datos
+            String timestamp = ""+System.currentTimeMillis();
+            long id = dbHelper.insertRecord(
+                    ""+name,
+                    ""+imageUri,
+                    ""+bio,
+                    ""+phone,
+                    ""+email,
+                    ""+dob,
+                    ""+timestamp,
+                    ""+timestamp
+            );
+
+            Toast.makeText(this, "Registro agregado contra ID: "+id, Toast.LENGTH_SHORT).show();
+        }
     }
+
     private void imagePickDialog(){
         // opciones para mostrar en el diálogo
         String[] options = {"Camara", "Galeria"};
@@ -175,7 +244,7 @@ public class AgregarRegistroActivity extends AppCompatActivity {
         // Intento de abrir la cámara para la imagen
         Intent cameraIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
         cameraIntent.putExtra(MediaStore.EXTRA_OUTPUT, imageUri);
-        startActivityForResult(cameraIntent, IMAGE_PICK_CAMERA_CODE);//mostrar
+        startActivityForResult(cameraIntent, IMAGE_PICK_CAMERA_CODE);
     }
 
     private boolean checkStoragePermission(){
@@ -300,6 +369,4 @@ public class AgregarRegistroActivity extends AppCompatActivity {
 
         super.onActivityResult(requestCode, resultCode, data);
     }
-
-
 }
